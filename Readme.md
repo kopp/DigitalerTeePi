@@ -4,6 +4,10 @@ Basierend auf dem _Tea Boy_ wurde ein Assistent zum Tee-Kochen gebaut.
 
 ![](TeePiInAction.gif)
 
+(Siehe
+[das Video hier](https://raw.githubusercontent.com/kopp/DigitalerTeePi/master/TeePiInAction.mp4)
+um das ganze mit Ton zu erleben -- es lohnt sich 😉.)
+
 
 
 # Funktionsweise
