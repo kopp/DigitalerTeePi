@@ -74,6 +74,11 @@ Das Display und der Servo-Motor wurden mit Steckern angeschlossen, um diese notf
 
 ![Komplett verkabelt mit Arduino](images/komplett_mit_arduino.jpg)
 
+Zur Stromversorgung wird ein Ladegerät mit USB-Anschluss verwendet:
+Es wird mit dem USB-Kabel verbunden, das aus dem TeePi herausragt und im Arduino endet.
+Vorteil davon: Der TeePi ist immer noch programmierbar.
+
+
 
 ## Bedienelemente
 
