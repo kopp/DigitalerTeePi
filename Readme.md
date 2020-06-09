@@ -2,6 +2,9 @@
 
 Basierend auf dem _Tea Boy_ wurde ein Assistent zum Tee-Kochen gebaut.
 
+![](TeePiInAction.gif)
+
+
 
 # Funktionsweise
 
@@ -105,3 +108,14 @@ An zwei Ecken wurden größere Löcher geschmolzen, durch die mit Metallschraube
 Als Musikelement dient der Baustein, den man in Grußkarten finden kann.
 Der Mechanismus, der die Karte normalerweise aktiviert, wurde "kurzgeschlossen" und die Spannungsversorgung über einen Transistor (BC547 mit 1k-Ohm-Widerstand an Basis) an den 3.3 V-Anschluss des Arduinos angeschlossen.
 Durch den Transistor kann das komplette Modul ein/ausgeschaltet werden.
+
+
+
+# gif erstellen
+
+    ffmpeg -i TeePiInAction.mp4 -filter_complex "[0:v] fps=6,scale=240:-1,split [a][b];[a] palettegen [p];[b][p] paletteuse" TeePiInAction.gif
+
+Siehe
+[hier](https://engineering.giphy.com/how-to-make-gifs-with-ffmpeg/)
+für eine Erklärung.
+
