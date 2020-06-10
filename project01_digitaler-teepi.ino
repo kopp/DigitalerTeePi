@@ -29,15 +29,28 @@
 #include <Adafruit_SSD1306.h>
 
 
+enum class DipMode : int
+{
+  SIMPLY_DOWN = 0,
+  JIGGLE,
+  NUMBER_OF_DIP_MODES,
+};
+
+
 struct LcdDisplay {
   Adafruit_SSD1306 display_driver;
   char print_time_buffer[7];
+  char print_dip_mode_buffer[50];
   int start_text_current_line = 0;
   static const int number_of_start_text_lines = 3;
   const char* start_text_lines[number_of_start_text_lines] = {
     "1.\nTeebeutel\nbefestigen",
     "2.\nZeit\neinstellen",
     "3.\nTimer\nstarten"
+  };
+  const char* dip_mode_description[static_cast<int>(DipMode::NUMBER_OF_DIP_MODES)] = {
+    "Eintauchen",
+    "Schwenken",
   };
   bool is_display_inverted = false;
 
@@ -70,6 +83,22 @@ struct LcdDisplay {
 
     show_line(start_text_lines[start_text_current_line]);
     start_text_current_line += 1;
+  }
+
+  void show_dip_mode_line(DipMode mode)
+  {
+    if (mode == DipMode::NUMBER_OF_DIP_MODES)
+    {
+      show_line("Internal Error");
+    }
+    else
+    {
+      sprintf(print_dip_mode_buffer,
+              "Eintauch-\nModus:\n%s",
+              dip_mode_description[static_cast<int>(mode)]);
+    }
+
+    show_line(print_dip_mode_buffer);
   }
 
   void show_done_text_line() {
@@ -120,9 +149,12 @@ struct LcdDisplay {
 struct Beak {
 
   // parameters
-  const int min_angle = 110;
-  const int max_angle = 25;
-  const int servo_direction_for_beak_up = -1;
+  const int min_angle = 110;  //!< Angle when the beak is at the lowest position
+  const int max_angle = 25;   //!< Angle when the beak is at the highest position
+  const int servo_direction_for_beak_up = -1;  //!< Mapping from change in physical position to change in angle
+
+  const int lower_jiggle_angle = 100;
+  const int upper_jiggle_angle = 70;
 
   const int pin_no;
   const int ticks_per_degree_down;
@@ -133,6 +165,8 @@ struct Beak {
     NONE,
     UP,
     DOWN,
+    JIGGLE_UP,
+    JIGGLE_DOWN,
   };
   RequestedMovement requested_movement = RequestedMovement::NONE;
   int current_angle = min_angle;
@@ -171,39 +205,78 @@ struct Beak {
     targeted_angle = min_angle;
   }
 
+  void jiggle() {
+    requested_movement = RequestedMovement::JIGGLE_DOWN;
+    ticks_remaining_until_going_to_next_angle = ticks_per_degree_down;
+    targeted_angle = lower_jiggle_angle;
+  }
+
   void tick() {
+
     if (requested_movement == RequestedMovement::NONE)
     {
       return;
     }
-    else {
 
-      if (ticks_remaining_until_going_to_next_angle > 0) {
-        ticks_remaining_until_going_to_next_angle -= 1;
-        return;
-      }
-      else {
+    if (ticks_remaining_until_going_to_next_angle > 0) {
+      ticks_remaining_until_going_to_next_angle -= 1;
+      return;
+    }
 
-        servo_controller.write(current_angle);
+    servo_controller.write(current_angle);
 
-        if (current_angle == targeted_angle) {
-          requested_movement = RequestedMovement::NONE;
+    if (current_angle == targeted_angle) {
+      switch (requested_movement)
+      {
+        case RequestedMovement::UP:
+        case RequestedMovement::DOWN:
+          {
+            requested_movement = RequestedMovement::NONE;
+            return;
+          }
+
+        case RequestedMovement::JIGGLE_UP:
+          {
+            requested_movement = RequestedMovement::JIGGLE_DOWN;
+            ticks_remaining_until_going_to_next_angle = ticks_per_degree_down;
+            targeted_angle = lower_jiggle_angle;
+          }
+          break;
+
+        case RequestedMovement::JIGGLE_DOWN:
+          {
+            requested_movement = RequestedMovement::JIGGLE_UP;
+            ticks_remaining_until_going_to_next_angle = ticks_per_degree_up;
+            targeted_angle = upper_jiggle_angle;
+          }
+          break;
+
+        case RequestedMovement::NONE:
+        default:
           return;
-        }
-        else {
-          if (requested_movement == RequestedMovement::UP) {
+      }
+    }
+    else {
+      switch (requested_movement)
+      {
+        case RequestedMovement::JIGGLE_UP:
+        case RequestedMovement::UP:
+          {
             current_angle += servo_direction_for_beak_up;
             ticks_remaining_until_going_to_next_angle = ticks_per_degree_up;
           }
-          else if (requested_movement == RequestedMovement::DOWN) {
+          break;
+        case RequestedMovement::JIGGLE_DOWN:
+        case RequestedMovement::DOWN:
+          {
             current_angle -= servo_direction_for_beak_up;
             ticks_remaining_until_going_to_next_angle = ticks_per_degree_down;
           }
-
-        }
-
+          break;
+        case RequestedMovement::NONE:
+        default:
+          return;
       }
-
     }
   }
 
@@ -288,19 +361,16 @@ struct PeriodicSwitch
     void init()
     {
       pinMode(pin_number, OUTPUT);
-      pinMode(LED_BUILTIN, OUTPUT);
     }
 
     void on()
     {
       activation_time_stamp = millis();
-      digitalWrite(LED_BUILTIN, HIGH);
       is_on = true;
     }
 
     void off()
     {
-      digitalWrite(LED_BUILTIN, HIGH);
       is_on = false;
     }
 
@@ -362,9 +432,11 @@ struct DigitalTeePi
       INIT,
       SPLASH_SCREEN,
       SET_TIME,
+      SET_DIP_MODE,
       TIME_RUNNING,
       TIME_UP,
     };
+    DipMode dip_mode = DipMode::SIMPLY_DOWN;
     TeePiState state = TeePiState::INIT;
     unsigned long last_time = 0;
     unsigned long last_time_inverted = 0;
@@ -452,9 +524,48 @@ struct DigitalTeePi
             int start_count = start_button.pop_button_press_count();
             if (start_count > 0)
             {
+              state = TeePiState::SET_DIP_MODE;
+              lcd.show_dip_mode_line(dip_mode);
+            }
+          }
+          break;
+        case TeePiState::SET_DIP_MODE:
+          {
+            int increase_count = increase_time_button.pop_button_press_count();
+            int decrease_count = decrease_time_button.pop_button_press_count();
+            int change_count = increase_count - decrease_count;
+
+            int new_dip_mode = (static_cast<int>(dip_mode) + change_count) % static_cast<int>(DipMode::NUMBER_OF_DIP_MODES);
+            if (new_dip_mode < 0)
+            {
+              new_dip_mode += static_cast<int>(DipMode::NUMBER_OF_DIP_MODES);
+            }
+            if (new_dip_mode != static_cast<int>(dip_mode))
+            {
+              dip_mode = static_cast<DipMode>(new_dip_mode);
+              lcd.show_dip_mode_line(dip_mode);
+            }
+
+            int start_count = start_button.pop_button_press_count();
+            if (start_count > 0)
+            {
               timestamp_timer_started = now;
               state = TeePiState::TIME_RUNNING;
-              beak.down();
+
+              switch (dip_mode)
+              {
+                case DipMode::SIMPLY_DOWN:
+                  beak.down();
+                  break;
+
+                case DipMode::JIGGLE:
+                  beak.jiggle();
+                  break;
+
+                default:
+                  lcd.show_line("Internal Error");
+                  break;
+              }
             }
           }
           break;
