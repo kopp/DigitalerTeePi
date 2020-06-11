@@ -33,6 +33,7 @@ enum class DipMode : int
 {
   SIMPLY_DOWN = 0,
   JIGGLE,
+  NO_DIPPING,
   NUMBER_OF_DIP_MODES,
 };
 
@@ -51,6 +52,7 @@ struct LcdDisplay {
   const char* dip_mode_description[static_cast<int>(DipMode::NUMBER_OF_DIP_MODES)] = {
     "Eintauchen",
     "Schwenken",
+    "Nicht!",
   };
   bool is_display_inverted = false;
 
@@ -560,6 +562,9 @@ struct DigitalTeePi
 
                 case DipMode::JIGGLE:
                   beak.jiggle();
+                  break;
+
+                case DipMode::NO_DIPPING:
                   break;
 
                 default:
