@@ -149,12 +149,12 @@ struct LcdDisplay {
 struct Beak {
 
   // parameters
-  const int min_angle = 110;  //!< Angle when the beak is at the lowest position
+  const int min_angle = 100;  //!< Angle when the beak is at the lowest position
   const int max_angle = 25;   //!< Angle when the beak is at the highest position
   const int servo_direction_for_beak_up = -1;  //!< Mapping from change in physical position to change in angle
 
-  const int lower_jiggle_angle = 100;
-  const int upper_jiggle_angle = 70;
+  const int lower_jiggle_angle = min_angle;
+  const int upper_jiggle_angle = 40;
 
   const int pin_no;
   const int ticks_per_degree_down;
