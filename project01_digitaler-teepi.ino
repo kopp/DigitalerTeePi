@@ -442,13 +442,13 @@ struct DigitalTeePi
       TIME_RUNNING,
       TIME_UP,
     };
-    DipMode dip_mode = DipMode::SIMPLY_DOWN;
+    DipMode dip_mode = DipMode::JIGGLE;
     TeePiState state = TeePiState::INIT;
     unsigned long last_time = 0;
     unsigned long last_time_inverted = 0;
 
     /** Time set with buttons -- will be used for timer */
-    int duration_in_seconds = 120;
+    int duration_in_seconds = 10 * 60;
     unsigned long timestamp_timer_started = 0;
 
     DigitalTeePi(
