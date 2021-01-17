@@ -40,7 +40,7 @@ enum class DipMode : int
 
 struct LcdDisplay {
   Adafruit_SSD1306 display_driver;
-  char print_time_buffer[7];
+  char print_time_buffer[15];  // sufficient space for time + "\neinst"
   char print_dip_mode_buffer[50];
   int start_text_current_line = 0;
   static const int number_of_start_text_lines = 3;
@@ -118,7 +118,8 @@ struct LcdDisplay {
   }
 
 
-  void show_time(int time_in_seconds) {
+  //! \param is_time_set true if the time is currently being set
+  void show_time(int time_in_seconds, bool is_time_set = false) {
     int minutes = time_in_seconds / 60;
     int seconds = time_in_seconds % 60;
 
@@ -132,6 +133,9 @@ struct LcdDisplay {
     }
     else {
       sprintf(print_time_buffer, "%2d", minutes);
+    }
+    if (is_time_set) {
+      strcat(print_time_buffer, "\neinst");
     }
     display_driver.println(print_time_buffer);
 
@@ -522,7 +526,7 @@ struct DigitalTeePi
             if (duration_in_seconds < 0) {
               duration_in_seconds = 0;
             }
-            lcd.show_time(duration_in_seconds);
+            lcd.show_time(duration_in_seconds, true);
             int start_count = start_button.pop_button_press_count();
             if (start_count > 0)
             {
